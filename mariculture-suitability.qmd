@@ -1,0 +1,17 @@
+---
+title: "Exploring Patterns of Environmental Justice"
+subtitle: "EDS 223 Homework 2"
+author: "Roshan Andres Nair"
+format: 
+  pdf:
+    include-in-header:
+      text: |
+        \usepackage{fvextra}
+        \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+    fig-width: 9
+    fig-height: 6
+    fig-pos: "H"
+execute:
+  warning: false
+  message: false
+---
