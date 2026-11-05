@@ -1,6 +1,6 @@
 ---
-title: "Exploring Patterns of Environmental Justice"
-subtitle: "EDS 223 Homework 2"
+title: "Exploring US West Coast Mariculture Suitability"
+subtitle: "EDS 223 Homework 3"
 author: "Roshan Andres Nair"
 format: 
   pdf:
@@ -15,3 +15,110 @@ execute:
   warning: false
   message: false
 ---
+
+## Library
+```{r}
+# Library of Packages
+library(tidyverse)
+library(sf)
+library(here)
+library(stars)
+library(tmap)
+library(quarto)
+library(spData) # spatial data
+library(spDataLarge) # spatial data
+library(geodata) # spatial data
+```
+
+## Set Theme
+```{r}
+# Set Theme
+theme_set(theme_bw())
+```
+
+# Prepare Data
+
+## Data Loading
+```{r}
+# EEZ shapefile
+eez <- sf::st_read(
+  'data/wc_regions_clean.shp'
+)
+
+# Ocean depth raster
+depth <- rast('data/depth.tif')
+
+# Seat Surface Temperature rasters (2008-2012)
+sst <- rast(c('data/average_annual_sst_2008.tif',
+         'data/average_annual_sst_2009.tif', 
+         'data/average_annual_sst_2010.tif', 
+         'data/average_annual_sst_2011.tif', 
+         'data/average_annual_sst_2012.tif'))
+```
+
+## Checking CRS
+```{r}
+if (st_crs(eez) == st_crs(depth) && st_crs(eez) == st_crs(sst)) {
+  print('ALL CRS MATCH')
+} else {
+  warning('AT LEAST ONE CRS DOES NOT MATCH')
+}
+
+print(crs(eez, describe = TRUE))
+print(crs(depth, describe = TRUE))
+print(crs(sst, describe = TRUE))
+```
+
+# Process Data
+```{r}
+# Raster of mean SST from 2008-2012
+sst_mean <- mean(sst, na.rm = TRUE)
+
+# Converting values from K to C
+sst_mean_c <- sst_mean - 273.15
+
+# Cropping depth to sst extent
+depth_cropped <- crop(depth, sst_mean_c)
+
+# Resampling depth for resolution match
+depth_resampled <- resample(depth_cropped, sst_mean_c, method = 'bilinear')
+
+# Checking for matching CRS, resolution, and extent simultaneously
+if (compareGeom(sst_mean_c, depth_resampled, lyrs = FALSE, stopOnError = FALSE, messages = TRUE) == TRUE) {
+  print('EVERYTHING MATCHES')
+} else {
+  warning('SOMETHING DOES NOT MATCH')
+}
+
+# If simultaneous check returns warning:
+# Checking for matching CRS
+if (st_crs(sst_mean_c) == st_crs(depth_resampled)) {
+  print('CRS MATCH')
+} else {
+  warning('CRS DOES NOT MATCH')
+}
+
+# Checking for matching resolution
+if (all(res(sst_mean_c) == res(depth_resampled))) {
+  print('RESOLUTION MATCH')
+} else {
+  warning('RESOLUTION DOES NOT MATCH')
+}
+
+# Checking for matching extent
+if (ext(sst_mean_c) == ext(depth_resampled)) {
+  print('EXTENT MATCH')
+} else {
+  warning('EXTENT DOES NOT MATCH')
+}
+```
+
+## Find Suitable Locations
+```{r}
+
+```
+
+## Determine the Most Suitable EEZ
+```{r}
+
+```
