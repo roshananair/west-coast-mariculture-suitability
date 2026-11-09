@@ -38,7 +38,7 @@ theme_set(theme_bw())
 
 # Prepare Data
 
-## Data Loading
+## Data Loading (needed for function)
 ```{r}
 # EEZ shapefile
 eez <- sf::st_read(
@@ -49,11 +49,13 @@ eez <- sf::st_read(
 depth <- rast('data/depth.tif')
 
 # Seat Surface Temperature rasters (2008-2012)
-sst <- rast(c('data/average_annual_sst_2008.tif',
-         'data/average_annual_sst_2009.tif', 
-         'data/average_annual_sst_2010.tif', 
-         'data/average_annual_sst_2011.tif', 
-         'data/average_annual_sst_2012.tif'))
+sst <- rast(c(
+  'data/average_annual_sst_2008.tif',
+  'data/average_annual_sst_2009.tif',
+  'data/average_annual_sst_2010.tif',
+  'data/average_annual_sst_2011.tif',
+  'data/average_annual_sst_2012.tif'
+))
 ```
 
 ## Checking CRS
@@ -69,7 +71,7 @@ print(crs(depth, describe = TRUE))
 print(crs(sst, describe = TRUE))
 ```
 
-# Process Data
+# Process Data (needed for function)
 ```{r}
 # Raster of mean SST from 2008-2012
 sst_mean <- mean(sst, na.rm = TRUE)
@@ -79,34 +81,59 @@ sst_mean_c <- sst_mean - 273.15
 
 # Cropping depth to sst extent
 depth_cropped <- crop(depth, sst_mean_c)
+depth_cropped[depth_cropped == 32767] <- NA # correcting any NA values
 
 # Resampling depth for resolution match
 depth_resampled <- resample(depth_cropped, sst_mean_c, method = 'bilinear')
 
+# Converting land elevations to NA
+bathymetry <- depth_resampled
+bathymetry[bathymetry > 0] <- NA
+```
+
+```{r}
+# Check for elevations in bathymetry
+if ((max(values(bathymetry), na.rm = TRUE)) < 0) {
+  print('ALL VALUES OF DEPTH')
+} else {
+  warning('STILL INCLUDES ELEVATION VALUE(S)')
+}
+
 # Checking for matching CRS, resolution, and extent simultaneously
-if (compareGeom(sst_mean_c, depth_resampled, lyrs = FALSE, stopOnError = FALSE, messages = TRUE) == TRUE) {
+if (
+  compareGeom(
+    sst_mean_c,
+    bathymetry,
+    lyrs = FALSE,
+    stopOnError = FALSE,
+    messages = TRUE
+  ) ==
+    TRUE
+) {
   print('EVERYTHING MATCHES')
 } else {
   warning('SOMETHING DOES NOT MATCH')
 }
+```
 
+```{r}
 # If simultaneous check returns warning:
 # Checking for matching CRS
-if (st_crs(sst_mean_c) == st_crs(depth_resampled)) {
+if (st_crs(sst_mean_c) == st_crs(bathymetry)) {
   print('CRS MATCH')
 } else {
   warning('CRS DOES NOT MATCH')
 }
 
 # Checking for matching resolution
-if (all(res(sst_mean_c) == res(depth_resampled))) {
+if (all(res(sst_mean_c) == res(bathymetry))) {
   print('RESOLUTION MATCH')
 } else {
   warning('RESOLUTION DOES NOT MATCH')
 }
 
 # Checking for matching extent
-if (ext(sst_mean_c) == ext(depth_resampled)) {
+if (ext(sst_mean_c) == ext(bathymetry)) {
   print('EXTENT MATCH')
 } else {
   warning('EXTENT DOES NOT MATCH')
@@ -115,10 +142,188 @@ if (ext(sst_mean_c) == ext(depth_resampled)) {
 
 ## Find Suitable Locations
 ```{r}
+# Reclassify depth
+bathymetry_matrix <- matrix(
+  c(
+    -70,
+    0,
+    1,
+    -9999,
+    -70,
+    0
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
 
+bathymetry_reclass <- classify(
+  bathymetry,
+  bathymetry_matrix,
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+plot(bathymetry_reclass)
+```
+
+```{r}
+# Reclassify SST
+sst_matrix <- matrix(
+  c(
+    -9999,
+    11,
+    0,
+    11,
+    30,
+    1,
+    30,
+    9999,
+    0
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+
+sst_reclass <- classify(
+  sst_mean_c,
+  sst_matrix,
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+plot(sst_reclass)
+```
+
+```{r}
+# Locations satisfying both SST and depth conditions
+depth_sst_suitable <- lapp(
+  sds(bathymetry_reclass, sst_reclass),
+  fun = function(c_sst, c_bath) {
+    as.numeric(c_sst == 1 & c_bath == 1)
+  }
+)
+
+plot(depth_sst_suitable)
 ```
 
 ## Determine the Most Suitable EEZ
-```{r}
 
+```{r}
+# Checking for matching CRS
+if (st_crs(eez) == st_crs(depth_sst_suitable)) {
+  print('CRS MATCH')
+} else {
+  warning('CRS DO NOT MATCH')
+}
+```
+```{r}
+# Make eez data a raster
+eez_rast <- rasterize(eez, depth_sst_suitable, field = 'rgn')
+```
+
+```{r}
+# Find cell size
+cell_size <- cellSize(depth_sst_suitable, unit = 'km', mask = TRUE)
+```
+
+```{r}
+# Use only suitable cells
+suitable <- mask(cell_size, depth_sst_suitable, maskvalues = 0)
+```
+
+```{r}
+# Suitable area per EEZ region
+suitable_per_eez <- zonal(suitable, eez_rast, fun = 'sum', na.rm = TRUE)
+```
+```{r}
+# Join EEZs with suitable oyster area per EEZ
+oyster_map <- left_join(eez, suitable_per_eez, by = 'rgn')
+```
+```{r}
+# Mapping oyster suitablility by EEZ
+tm_shape(oyster_map) + 
+  tm_basemap('Esri.WorldGrayCanvas') + 
+  tm_polygons(fill = 'area', fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"))) + 
+  tm_title('Suitable Oyster Habitat by EEZ Region on the US Pacific Coast') +
+  tm_text(text = 'rgn', size = 0.75) +
+  tm_scalebar()
+```
+
+# Function
+
+```{r}
+suitable_habitat <- function(min_temp, max_temp, min_depth_neg, max_depth_neg, species_name) {
+  # Reclassify depth
+bathymetry_matrix <- matrix(
+  c(
+    min_depth_neg, 9999, 0,
+    max_depth_neg, min_depth_neg, 1,
+    -9999, max_depth_neg, 0
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+
+bathymetry_reclass <- classify(
+  bathymetry,
+  bathymetry_matrix,
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Reclassify SST
+sst_matrix <- matrix(
+  c(
+    -9999, min_temp, 0,
+    min_temp, max_temp, 1,
+    max_temp, 9999, 0
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+
+sst_reclass <- classify(
+  sst_mean_c,
+  sst_matrix,
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Locations satisfying both SST and depth conditions
+depth_sst_suitable <- lapp(
+  sds(bathymetry_reclass, sst_reclass),
+  fun = function(c_sst, c_bath) {
+    as.numeric(c_sst == 1 & c_bath == 1)
+  }
+)
+
+# Make eez data a raster
+eez_rast <- rasterize(eez, depth_sst_suitable, field = 'rgn')
+
+# Find cell size
+cell_size <- cellSize(depth_sst_suitable, unit = 'km', mask = TRUE)
+
+# Use only suitable cells
+suitable <- mask(cell_size, depth_sst_suitable, maskvalues = 0)
+
+# Suitable area per EEZ region
+suitable_per_eez <- zonal(suitable, eez_rast, fun = 'sum', na.rm = TRUE)
+
+# Join EEZs with suitable area per EEZ
+map <- left_join(eez, suitable_per_eez, by = 'rgn')
+
+# Mapping suitablility by EEZ
+tm_shape(map) + 
+  tm_basemap('Esri.WorldGrayCanvas') + 
+  tm_polygons(fill = 'area', fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"))) + 
+  tm_title(str_wrap(paste('Suitable', species_name, 'Habitat by EEZ Region on the Pacific Coasts of Washington, Oregon, and California, USA'), width = 40), size = 1) +
+  tm_text(text = 'rgn', size = 0.75) +
+  tm_scalebar()
+}
+```
+
+# Panopea generosa (Pacific Geoduck: Depth = 3-20 m, Temperature = 8-18 degrees C)
+[Geoduck Aquaculture: Estimated Costs and Returns for Sub-tidal Culture in B.C.](https://web.archive.org/web/20111217220815/http://www.agf.gov.bc.ca/fisheries/cabinet/GeoduckFactsheet05_01.pdf) British Columbia Minstry of Agriculture and Lands. June 2025. 
+```{r}
+suitable_habitat(8, 18, -3, -20, 'Panopea generosa (Gould, 1850), Pacific Geoduck')
 ```
