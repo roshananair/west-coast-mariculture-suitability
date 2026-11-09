@@ -42,7 +42,8 @@ theme_set(theme_bw())
 ```{r}
 # EEZ shapefile
 eez <- sf::st_read(
-  'data/wc_regions_clean.shp'
+  'data/wc_regions_clean.shp',
+  quiet = TRUE
 )
 
 # Ocean depth raster
@@ -164,6 +165,7 @@ bathymetry_reclass <- classify(
 ```{r}
 # Plotting suitable oyster depths, note: contains terrestrial/freshwater depths below sea level
 plot(bathymetry_reclass,
+     mar = c(5, 3, 2, 4),
      main = 'Suitable Oyster Depths',
      xlab = 'Longitude',
      ylab = 'Latitude',
@@ -200,7 +202,8 @@ sst_reclass <- classify(
 
 ```{r}
 # Plotting suitable oyster temperatures, note: contains some terrestrial/freshwater values
-plot(sst_reclass,   
+plot(sst_reclass,
+     mar = c(5, 3, 2, 4),   
      main = 'Suitable Oyster Sea Surface Temperature',
      xlab = 'Longitude',
      ylab = 'Latitude',
@@ -228,7 +231,8 @@ depth_sst_suitable <- lapp(
 
 ```{r}
 # Plotting suitable depth and temperature for oysters
-plot(depth_sst_suitable,   
+plot(depth_sst_suitable,
+     mar = c(5, 3, 2, 4),   
      main = 'Suitable Oyster Sea Surface Temperature AND Depth',
      xlab = 'Longitude',
      ylab = 'Latitude',
@@ -285,24 +289,26 @@ tm_shape(oyster_map) +
   tm_basemap('Esri.WorldGrayCanvas') + 
   tm_polygons(fill = 'area', 
             fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"), 
-                                    position = tm_pos_in('LEFT', 'BOTTOM'),
-                                    titl.size = 0.7,
+                                    position = tm_pos_in('right', 'CENTER'),
+                                    title.size = 0.7,
                                     text.size = 0.7,
-                                    item.height = 0.7,
-                                    item.width = 0.7,
+                                    item.height = 0.6,
+                                    item.width = 0.6,
                                     padding = c(0.2, 0.2, 0.2, 0.2))) + 
-  tm_title(str_wrap(paste('Suitable Oyster Habitat by EEZ Region on the Pacific Coast of the USA'), 
-                    width = 22.5), 
+  tm_title(str_wrap(paste('Suitable Oyster Habitat by EEZ Region on the US Pacific Coast'), 
+                    width = 15), 
            size = 1, 
-           position = tm_pos_in(pos.h = 1.1, 
+           position = tm_pos_in(pos.h = 0.95, 
                                 pos.v = 0.7, 
                                 just.h = 'right', 
                                 just.v = 'center'),
            fontface = 'bold') +
-  tm_text(text = 'rgn', size = 0.75) +
-  tm_scalebar(position = c('right', 'top')) +
+  tm_text(text = 'rgn', size = 0.6) +
+  tm_scalebar(position = c('RIGHT', 'top'),
+              text.size = 0.5) +
   tm_compass(type = 'arrow', 
-             position = tm_pos_in('left', 'top'))
+             position = tm_pos_in('left', 'top'),
+             size = 1.5)
 ```
 
 # Function for Mapping Suitable Area for Mariculture
@@ -372,29 +378,30 @@ tm_shape(map) +
   tm_basemap('Esri.WorldGrayCanvas') + 
   tm_polygons(fill = 'area', 
               fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"), 
-                                      position = tm_pos_in('LEFT', 'BOTTOM'),
-                                      titl.size = 0.7,
+                                      position = tm_pos_in('right', 'CENTER'),
+                                      title.size = 0.7,
                                       text.size = 0.7,
-                                      item.height = 0.7,
-                                      item.width = 0.7,
-                                      padding = c(0.2, 0.2, 0.2, 0.2))) + 
+                                      item.height = 0.6,
+                                      item.width = 0.6,
+                                      padding = c(0.1, 0.1, 0.1, 0.1))) + 
   tm_title(str_wrap(paste('Suitable', 
                           species_name, 
-                          'Habitat by EEZ Region on the Pacific Coast of the USA'), 
-                          width = 22.5), 
-            size = 1, 
-            position = tm_pos_in(pos.h = 1.1, pos.v = 0.7, just.h = 'right', just.v = 'center'),
+                          'Habitat by EEZ Region on the US Pacific Coast'), 
+                          width = 20), 
+            size = 0.75, 
+            position = tm_pos_in(pos.h = 0.95, pos.v = 0.7, just.h = 'right', just.v = 'center'),
             fontface = 'bold') +
-  tm_text(text = 'rgn', 
-          size = 0.75) +
-  tm_scalebar(position = c('right', 'top')) +
+  tm_text(text = 'rgn', size = 0.6) +
+  tm_scalebar(position = c('RIGHT', 'top'),
+              text.size = 0.5) +
   tm_compass(type = 'arrow', 
-             position = tm_pos_in('left', 'top'))
+             position = tm_pos_in('left', 'top'),
+             size = 1.5)
 }
 ```
 
 # Example: Panopea generosa (Pacific Geoduck) 
 Suitable Conditions: Depth = 3-20 m, Temperature = 8-18 degrees C
 ```{r}
-suitable_habitat(8, 18, -3, -20, 'Panopea generosa (Pacific Geoduck)')
+suitable_habitat(8, 18, -3, -20, 'Panopea generosa')
 ```
