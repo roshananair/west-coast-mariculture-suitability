@@ -25,9 +25,9 @@ library(here)
 library(stars)
 library(tmap)
 library(quarto)
-library(spData) # spatial data
-library(spDataLarge) # spatial data
-library(geodata) # spatial data
+library(spData)
+library(spDataLarge) 
+library(geodata) 
 ```
 
 ## Set Theme
@@ -48,7 +48,7 @@ eez <- sf::st_read(
 # Ocean depth raster
 depth <- rast('data/depth.tif')
 
-# Seat Surface Temperature rasters (2008-2012)
+# Sea Surface Temperature rasters (2008-2012)
 sst <- rast(c(
   'data/average_annual_sst_2008.tif',
   'data/average_annual_sst_2009.tif',
@@ -140,17 +140,14 @@ if (ext(sst_mean_c) == ext(bathymetry)) {
 }
 ```
 
-## Find Suitable Locations
+## Find Suitable Locations for OYSTERS
 ```{r}
 # Reclassify depth
 bathymetry_matrix <- matrix(
   c(
-    -70,
-    0,
-    1,
-    -9999,
-    -70,
-    0
+    -70, 0, 1,
+    -9999, -70, 0,
+    0, 9999, 0
   ),
   ncol = 3,
   byrow = TRUE
@@ -162,23 +159,32 @@ bathymetry_reclass <- classify(
   include.lowest = TRUE,
   right = TRUE
 )
-
-plot(bathymetry_reclass)
 ```
 
+```{r}
+# Plotting suitable oyster depths, note: contains terrestrial/freshwater depths below sea level
+plot(bathymetry_reclass,
+     main = 'Suitable Oyster Depths',
+     xlab = 'Longitude',
+     ylab = 'Latitude',
+     font.main = 2,
+     font.lab = 2,
+     font.axis = 2,
+     cex.main = 1.5,
+     cex.lab = 1.2,
+     cex.axis = 1.4,
+     plg = list(title = 'Suitability',
+                title.font = 2,
+                title.cex = 1.3,
+                legend = c('Unsuitable (0)', 'Suitable (1)')))
+```
 ```{r}
 # Reclassify SST
 sst_matrix <- matrix(
   c(
-    -9999,
-    11,
-    0,
-    11,
-    30,
-    1,
-    30,
-    9999,
-    0
+    -9999, 11, 0,
+    11, 30, 1,
+    30, 9999, 0
   ),
   ncol = 3,
   byrow = TRUE
@@ -190,8 +196,24 @@ sst_reclass <- classify(
   include.lowest = TRUE,
   right = TRUE
 )
+```
 
-plot(sst_reclass)
+```{r}
+# Plotting suitable oyster temperatures, note: contains some terrestrial/freshwater values
+plot(sst_reclass,   
+     main = 'Suitable Oyster Sea Surface Temperature',
+     xlab = 'Longitude',
+     ylab = 'Latitude',
+     font.main = 2,
+     font.lab = 2,
+     font.axis = 2,
+     cex.main = 1.5,
+     cex.lab = 1.2,
+     cex.axis = 1.4,
+     plg = list(title = 'Suitability',
+                title.font = 2,
+                title.cex = 1.3,
+                legend = c('Unsuitable (0)', 'Suitable (1)')))
 ```
 
 ```{r}
@@ -202,12 +224,27 @@ depth_sst_suitable <- lapp(
     as.numeric(c_sst == 1 & c_bath == 1)
   }
 )
-
-plot(depth_sst_suitable)
 ```
 
-## Determine the Most Suitable EEZ
+```{r}
+# Plotting suitable depth and temperature for oysters
+plot(depth_sst_suitable,   
+     main = 'Suitable Oyster Sea Surface Temperature AND Depth',
+     xlab = 'Longitude',
+     ylab = 'Latitude',
+     font.main = 2,
+     font.lab = 2,
+     font.axis = 2,
+     cex.main = 1.5,
+     cex.lab = 1.2,
+     cex.axis = 1.4,
+     plg = list(title = 'Suitability',
+                title.font = 2,
+                title.cex = 1.3,
+                legend = c('Unsuitable (0)', 'Suitable (1)')))
+```
 
+## Determine the Most Suitable EEZ for OYSTERS
 ```{r}
 # Checking for matching CRS
 if (st_crs(eez) == st_crs(depth_sst_suitable)) {
@@ -216,6 +253,7 @@ if (st_crs(eez) == st_crs(depth_sst_suitable)) {
   warning('CRS DO NOT MATCH')
 }
 ```
+
 ```{r}
 # Make eez data a raster
 eez_rast <- rasterize(eez, depth_sst_suitable, field = 'rgn')
@@ -235,24 +273,41 @@ suitable <- mask(cell_size, depth_sst_suitable, maskvalues = 0)
 # Suitable area per EEZ region
 suitable_per_eez <- zonal(suitable, eez_rast, fun = 'sum', na.rm = TRUE)
 ```
+
 ```{r}
 # Join EEZs with suitable oyster area per EEZ
 oyster_map <- left_join(eez, suitable_per_eez, by = 'rgn')
 ```
+
 ```{r}
 # Mapping oyster suitablility by EEZ
 tm_shape(oyster_map) + 
   tm_basemap('Esri.WorldGrayCanvas') + 
-  tm_polygons(fill = 'area', fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"))) + 
-  tm_title('Suitable Oyster Habitat by EEZ Region on the US Pacific Coast') +
+  tm_polygons(fill = 'area', 
+            fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"), 
+                                    position = tm_pos_in('LEFT', 'BOTTOM'),
+                                    titl.size = 0.7,
+                                    text.size = 0.7,
+                                    item.height = 0.7,
+                                    item.width = 0.7,
+                                    padding = c(0.2, 0.2, 0.2, 0.2))) + 
+  tm_title(str_wrap(paste('Suitable Oyster Habitat by EEZ Region on the Pacific Coast of the USA'), 
+                    width = 22.5), 
+           size = 1, 
+           position = tm_pos_in(pos.h = 1.1, 
+                                pos.v = 0.7, 
+                                just.h = 'right', 
+                                just.v = 'center'),
+           fontface = 'bold') +
   tm_text(text = 'rgn', size = 0.75) +
-  tm_scalebar()
+  tm_scalebar(position = c('right', 'top')) +
+  tm_compass(type = 'arrow', 
+             position = tm_pos_in('left', 'top'))
 ```
 
-# Function
-
+# Function for Mapping Suitable Area for Mariculture
 ```{r}
-suitable_habitat <- function(min_temp, max_temp, min_depth_neg, max_depth_neg, species_name) {
+suitable_habitat <- function(min_temp_c, max_temp_c, min_depth_neg, max_depth_neg, species_name) {
   # Reclassify depth
 bathymetry_matrix <- matrix(
   c(
@@ -274,9 +329,9 @@ bathymetry_reclass <- classify(
 # Reclassify SST
 sst_matrix <- matrix(
   c(
-    -9999, min_temp, 0,
-    min_temp, max_temp, 1,
-    max_temp, 9999, 0
+    -9999, min_temp_c, 0,
+    min_temp_c, max_temp_c, 1,
+    max_temp_c, 9999, 0
   ),
   ncol = 3,
   byrow = TRUE
@@ -315,15 +370,31 @@ map <- left_join(eez, suitable_per_eez, by = 'rgn')
 # Mapping suitablility by EEZ
 tm_shape(map) + 
   tm_basemap('Esri.WorldGrayCanvas') + 
-  tm_polygons(fill = 'area', fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"))) + 
-  tm_title(str_wrap(paste('Suitable', species_name, 'Habitat by EEZ Region on the Pacific Coasts of Washington, Oregon, and California, USA'), width = 40), size = 1) +
-  tm_text(text = 'rgn', size = 0.75) +
-  tm_scalebar()
+  tm_polygons(fill = 'area', 
+              fill.legend = tm_legend(title = expression("Suitable Area (km"^2*")"), 
+                                      position = tm_pos_in('LEFT', 'BOTTOM'),
+                                      titl.size = 0.7,
+                                      text.size = 0.7,
+                                      item.height = 0.7,
+                                      item.width = 0.7,
+                                      padding = c(0.2, 0.2, 0.2, 0.2))) + 
+  tm_title(str_wrap(paste('Suitable', 
+                          species_name, 
+                          'Habitat by EEZ Region on the Pacific Coast of the USA'), 
+                          width = 22.5), 
+            size = 1, 
+            position = tm_pos_in(pos.h = 1.1, pos.v = 0.7, just.h = 'right', just.v = 'center'),
+            fontface = 'bold') +
+  tm_text(text = 'rgn', 
+          size = 0.75) +
+  tm_scalebar(position = c('right', 'top')) +
+  tm_compass(type = 'arrow', 
+             position = tm_pos_in('left', 'top'))
 }
 ```
 
-# Panopea generosa (Pacific Geoduck: Depth = 3-20 m, Temperature = 8-18 degrees C)
-[Geoduck Aquaculture: Estimated Costs and Returns for Sub-tidal Culture in B.C.](https://web.archive.org/web/20111217220815/http://www.agf.gov.bc.ca/fisheries/cabinet/GeoduckFactsheet05_01.pdf) British Columbia Minstry of Agriculture and Lands. June 2025. 
+# Example: Panopea generosa (Pacific Geoduck) 
+Suitable Conditions: Depth = 3-20 m, Temperature = 8-18 degrees C
 ```{r}
-suitable_habitat(8, 18, -3, -20, 'Panopea generosa (Gould, 1850), Pacific Geoduck')
+suitable_habitat(8, 18, -3, -20, 'Panopea generosa (Pacific Geoduck)')
 ```

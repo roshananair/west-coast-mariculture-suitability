@@ -5,7 +5,7 @@ Repository for EDS 233 Homework 3: Prioritizing Potential Aquaculture
 This repository contains Assignment 3 for EDS 223 Geospatial Analysis & Remote Sensing. This assignment uses suitable growing conditions (sea surface temperature and depth) to create maps of species-specific suitable areas for aquaculture. Sea surface temperature (SST) data is from [NOAA’s 5km Daily Global Satellite Sea Surface Temperature Anomaly v3.1](https://coralreefwatch.noaa.gov/product/5km/index_5km_ssta.php) and Bathymetric data is from the [General Bathymetric Chart of the Oceans (GEBCO)](https://www.gebco.net/data-products/gridded-bathymetry-data#area), as well as boundaries of US West Coast Exclusive Economic Zone (EEZ) from [marineregions.org](https://www.marineregions.org/eez.php). A map of oyster cultivation suitability is produced, followed by a function to produce an equivalent map for another West Coast US species, given temperature and depth ranges, and then an example using the Pacific Geoduck [Panopea generosa (Gould, 1850)] is shown.
 
 ## Repository Contents
- - **data/** Contains all .tiff files containing annual sea surface temperature (SST) from 2008-2012, and ocean depth
+ - **data/** Contains all .tiff files containing annual sea surface temperature (SST) from 2008-2012, .tiff for ocean depth, and the West Coast EEZ shapefile.
      - data/average_annual_sst_2008.tif
      - data/average_annual_sst_2009.tif
      - data/average_annual_sst_2010.tif
