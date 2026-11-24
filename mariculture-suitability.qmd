@@ -180,6 +180,7 @@ plot(bathymetry_reclass,
                 title.cex = 1.3,
                 legend = c('Unsuitable (0)', 'Suitable (1)')))
 ```
+_This plot shows suitable depths for oysters along the Pacific coast of the US. They are namely shallow, nearshore environments and appear to run up and down most of the coastline._
 ```{r}
 # Reclassify SST
 sst_matrix <- matrix(
@@ -218,7 +219,7 @@ plot(sst_reclass,
                 title.cex = 1.3,
                 legend = c('Unsuitable (0)', 'Suitable (1)')))
 ```
-
+_This plot shows suitable sea surface temperatures for oysters along the Pacific coast of the US. They namely exclude the colder waters of the Nothern coasts and open water off of Vancouver Island, British Columbia._
 ```{r}
 # Locations satisfying both SST and depth conditions
 depth_sst_suitable <- lapp(
@@ -247,7 +248,7 @@ plot(depth_sst_suitable,
                 title.cex = 1.3,
                 legend = c('Unsuitable (0)', 'Suitable (1)')))
 ```
-
+_This plot shows areas of suitable sea surface temperature and depth for oysters along the Pacific coast of the US. They are patches for nearshore environments stretching up and down the coastline._
 ## Determine the Most Suitable EEZ for OYSTERS
 ```{r}
 # Checking for matching CRS
@@ -405,3 +406,6 @@ Suitable Conditions: Depth = 3-20 m, Temperature = 8-18 degrees C
 ```{r}
 suitable_habitat(8, 18, -3, -20, 'Panopea generosa')
 ```
+
+# Discussion
+_Here I aim to map suitable areas on the West coast of Washington, Oregon, and California for oyster mariculture based on depth and temperature requirements. Then I created a function to map suitable areas for any species of interest based on temperature and depth requirements, and used that function to map suitable areas for the pacific geoduck. I found that for oysters, the Central California coast, followed by the Washington coast have the most suitable areas based on temperature and depth requirements for oyster mariculture, whereas for the pacific geoduck, it is the Washington coast, then the Central California coast which are the most suitable. There exist many limitations in only looking at temperature and depth requirements of a species to detemine mariculture suitability as there are other ecological and practical considerations for siting cultures, however, as a preliminary environmental suitability assessment for these species, this function allows for the systematic exclusion of definitely unsuitable habitats._
